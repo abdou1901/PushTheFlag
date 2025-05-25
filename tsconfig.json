@@ -1,0 +1,14 @@
+{
+   "compilerOptions": {
+      "target": "ES2020", // or "ESNext"
+      "module": "CommonJS", // for Node.js
+      "rootDir": "src", // where your .ts files live
+      "outDir": "dist", // where compiled .js files go
+      "strict": true, // enables strict type-checking
+      "esModuleInterop": true, // for better CommonJS/ESM compatibility
+      "skipLibCheck": true, // speeds up type checking
+      "forceConsistentCasingInFileNames": true
+   },
+   "include": ["src"], // compile only what's inside src/
+   "exclude": ["node_modules"] // ignore external packages
+}
