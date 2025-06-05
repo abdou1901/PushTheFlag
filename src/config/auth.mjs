@@ -11,7 +11,7 @@ passport.use(
       {
          clientID: GITHUB_CLIENT_ID,
          clientSecret: GITHUB_CLIENT_SECRET,
-         callbackURL: GITHUB_CALLBACK_URL,
+         callbackURL: "https://pushtheflag-5.onrender.com/auth/github/callback",
          scope:["repo"]
       },
       (accessToken, refreshToken, profile, done) => {
