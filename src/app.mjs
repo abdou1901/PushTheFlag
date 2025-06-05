@@ -1,7 +1,6 @@
 import express from "express"
 import authRoutes from "./routes/auth.routes.mjs"
 import LeetcodeRoutes from "./routes/AiDoc.routes.mjs"
-import helmet from "helmet"
 import cookieParser from "cookie-parser"
 import rateLimit from "express-rate-limit"
 import passport from "./config/auth.mjs"
@@ -24,7 +23,6 @@ const app = express();
 const COOKIE_SECURE = NODE_ENV === 'production';
 
 if (COOKIE_SECURE) app.set('trust proxy', 1);
-app.use(helmet())
 app.use(cors({origin:"https://v0-aidocsplatform.vercel.app", credentials:true}));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 app.use(express.json());
