@@ -12,7 +12,13 @@ model User {
   id                Int                @id @default(autoincrement())
   github_id         String             @unique
   username          String
-  email             String?            @unique
+  github_username   String
+  email             String?  
+  pat               String?          
+  leetcode_repo     String             @default("leetcode/")
+  codeforces_repo   String             @default("codeforces/")
+  ctf_repo          String             @default("ctf_writeups/")
+  branch_name       String             @default("main")
   role              Role               @default(FREE)
   created_at        DateTime           @default(now())
   solved_leetcode   SolvedLeetcode[]
@@ -27,9 +33,9 @@ model SolvedLeetcode {
   problem_id  String
   title       String
   difficulty  String
+  language    String
   tags        String[]
-  solution    String?
-  ai_analysis String?
+  files       Json?
   created_at  DateTime @default(now())
 
   @@index([userId])
@@ -40,13 +46,13 @@ model SolvedCodeforces {
   id          Int      @id @default(autoincrement())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
-  problem_id  String
+  contest_id  Int
+  index       String   @db.Char(1)
   title       String
   difficulty  Int
-  tags        String[]
-  solution    String?
   language    String?
-  ai_analysis String?
+  tags        String[]
+  files       Json?
   created_at  DateTime @default(now())
 
   @@index([userId])
@@ -68,7 +74,8 @@ model CtfWriteup {
 
 enum Role {
   FREE
-  PREMIUM
+  PREMIUM1
+  PREMIUM2
   ADMIN
 }
 
