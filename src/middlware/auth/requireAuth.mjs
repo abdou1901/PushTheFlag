@@ -15,7 +15,7 @@ export function requireAuth(req,res,next) {
     function returnToRoot(){
         res.clearCookie("access_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
         res.clearCookie("refresh_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
-        return res.redirect("http://localhost:4000/");
+        return res.redirect("https://v0-aidocsplatform.vercel.app/login");
     }
 
     if(!access_Token){
@@ -36,7 +36,8 @@ export function requireAuth(req,res,next) {
         ) {
             return returnToRoot();
         }
-        return refreshToken(req,res);
+        refreshToken(req,res);
+        next();
     }
     
 }
