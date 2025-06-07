@@ -19,7 +19,6 @@ export function generateTokens(user){
         {
             id:user.id,
             username:user.username,
-            githubToken:user.githubToken
         },
         JWT_SECRET,
         {
