@@ -30,61 +30,43 @@ function isValidLanguage(language){
     return validLanguages.includes(language)
 }
 function processRawResponse(raw) {
-  if (typeof raw !== "string") {
-    throw new Error("processRawResponse2 expects a string input.");
+  if (typeof raw !== 'string') {
+    throw new Error('processRawResponse expects a string input.');
   }
   let s = raw.trim();
-  if (!s) throw new Error("Empty input to processRawResponse2.");
+  if (!s) throw new Error('Empty input to processRawResponse.');
 
-  // Extract JSON substring
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start < 0 || end < 0) {
-    throw new Error("Could not find JSON braces in input.");
+  // Extract the JSON substring between the first '{' and the matching '}'
+  const firstBrace = s.indexOf('{');
+  let depth = 0;
+  let endIndex = -1;
+  for (let i = firstBrace; i < s.length; i++) {
+    if (s[i] === '{' && s[i - 1] !== '\\') depth++;
+    if (s[i] === '}' && s[i - 1] !== '\\') {
+      depth--;
+      if (depth === 0) { endIndex = i; break; }
+    }
   }
-  s = s.slice(start, end + 1);
+  if (firstBrace < 0 || endIndex < 0) {
+    throw new Error('Could not locate a complete JSON object in the input.');
+  }
+  s = s.slice(firstBrace, endIndex + 1);
 
-  // Remove comments
+  // Remove JavaScript-style comments
   s = s.replace(/\/\/[^\n\r]*/g, '')
        .replace(/\/\*[\s\S]*?\*\//g, '');
 
-  // Normalize newlines in string literals
-  let out = '';
-  let inStr = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === '"' && s[i - 1] !== '\\') {
-      inStr = !inStr;
-      out += ch;
-    } else if ((ch === '\r' || ch === '\n') && inStr) {
-      out += '\\n';
-    } else {
-      out += ch;
-    }
-  }
-  s = out;
-
-  // Escape unescaped double-quotes inside string values
-  s = s.replace(/(:\s*")(.*?)(")((?:,|}))/g, (m, p1, content, quote, p4) => {
-    const escaped = content.replace(/\\"|"/g, (q) => q === '"' ? '\\\"' : q);
-    return `${p1}${escaped}${quote}${p4}`;
-  });
-
-  // Remove trailing commas
-  s = s.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-
-  // Quote object keys
-  s = s.replace(/([{,]\s*)([A-Za-z0-9_@$]+)\s*:/g, '$1"$2":');
-
-  // Final parse check
+  // Parse using JSON5 to handle unquoted keys, single quotes, etc.
+  let parsed;
   try {
-    JSON.parse(s);
+    parsed = JSON5.parse(s);
   } catch (err) {
-    console.error('Cleaned JSON:', s);
-    throw new Error('Invalid JSON after cleaning: ' + err.message);
+    console.error('Failed JSON5.parse on cleaned input:', s);
+    throw new Error('processRawResponse: invalid JSON after cleaning. ' + err.message);
   }
 
-  return s;
+  // Re-serialize to strict JSON
+  return JSON.stringify(parsed);
 }
 
 
