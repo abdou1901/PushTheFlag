@@ -34,91 +34,59 @@ function processRawResponse(raw) {
     throw new Error("processRawResponse2 expects a string input.");
   }
   let s = raw.trim();
-  if (s.length === 0) {
-    throw new Error("Empty input to processRawResponse2.");
-  }
-  let firstBraceIndex = -1;
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] === "{") {
-      firstBraceIndex = i;
-      break;
-    }
-  }
-  if (firstBraceIndex < 0) {
-    throw new Error("No opening '{' found in input.");
-  }
-  let depth = 0;
-  let insideString = false;
-  let resultEndIndex = -1;
-  for (let i = firstBraceIndex; i < s.length; i++) {
-    const ch = s[i];
+  if (!s) throw new Error("Empty input to processRawResponse2.");
 
-    if (ch === '"' && s[i - 1] !== "\\") {
-      insideString = !insideString;
-      continue;
-    }
-
-    if (!insideString) {
-      if (ch === "{") {
-        depth++;
-      } else if (ch === "}") {
-        depth--;
-        if (depth === 0) {
-          resultEndIndex = i;
-          break;
-        }
-      }
-    }
+  // Extract JSON substring
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start < 0 || end < 0) {
+    throw new Error("Could not find JSON braces in input.");
   }
+  s = s.slice(start, end + 1);
 
-  if (resultEndIndex < 0) {
-    throw new Error("Could not find matching closing '}' for the first '{'.");
-  }
-  s = s.substring(firstBraceIndex, resultEndIndex + 1);
-  s = s
-    .replace(/\/\/[^\\n\r]*/g, "")  
-    .replace(/\/\*[\s\S]*?\*\//g, "");
-  let out = "";
-  insideString = false;
+  // Remove comments
+  s = s.replace(/\/\/[^\n\r]*/g, '')
+       .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Normalize newlines in string literals
+  let out = '';
+  let inStr = false;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
-
-    if (ch === '"' && s[i - 1] !== "\\") {
-      insideString = !insideString;
+    if (ch === '"' && s[i - 1] !== '\\') {
+      inStr = !inStr;
       out += ch;
-    } else if ((ch === "\\n" || ch === "\r") && insideString) {
-      if (ch === "\r" && s[i + 1] === "\\n") {
-        out += "\\n";
-      } else {
-        out += "\\n";
-      }
+    } else if ((ch === '\r' || ch === '\n') && inStr) {
+      out += '\\n';
     } else {
       out += ch;
     }
   }
   s = out;
-  s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
-  s = s.replace(
-    /([{,]\s*)([A-Za-z0-9_@$]+)\s*:/g,
-    (match, prefix, key) => {
-      if (/^".*"$/.test(key)) {
-        return `${prefix}${key}:`;
-      }
-      return `${prefix}"${key}":`;
-    }
-  );
+
+  // Escape unescaped double-quotes inside string values
+  s = s.replace(/(:\s*")(.*?)(")((?:,|}))/g, (m, p1, content, quote, p4) => {
+    const escaped = content.replace(/\\"|"/g, (q) => q === '"' ? '\\\"' : q);
+    return `${p1}${escaped}${quote}${p4}`;
+  });
+
+  // Remove trailing commas
+  s = s.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+
+  // Quote object keys
+  s = s.replace(/([{,]\s*)([A-Za-z0-9_@$]+)\s*:/g, '$1"$2":');
+
+  // Final parse check
   try {
     JSON.parse(s);
   } catch (err) {
-    throw new Error(
-      "processRawResponse2: still invalid JSON after cleaning. Result was:\n" +
-        s +
-        "\nJSON.parse error: " +
-        err.message
-    );
+    console.error('Cleaned JSON:', s);
+    throw new Error('Invalid JSON after cleaning: ' + err.message);
   }
+
   return s;
 }
+
 
 export async function generateDocumentationLeetcode({url,code,language,userPrefs = {}}){
     try {
