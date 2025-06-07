@@ -19,6 +19,7 @@ export function requireAuth(req,res,next) {
     }
 
     if(!access_Token){
+        console.log("i'm sending request to the refresh token");
         return refreshToken(req,res,next)
     }
 
@@ -28,6 +29,7 @@ export function requireAuth(req,res,next) {
         console.log("you're authorized ")
         return next();
     } catch(err){
+        console.log("access token expired with error :",err);
         if(err !== "TokenExpiredError"){
             return returnToRoot();
         }
