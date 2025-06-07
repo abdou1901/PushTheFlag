@@ -24,7 +24,7 @@ router.get(
    passport.authenticate('github', { failureRedirect: '/', session: false }),
    githubCallback
 );
-router.post('/token', requireAuth, refreshToken);
+router.post('/token', refreshToken);
 router.post('/updateinfo',requireAuth, saveUserInfo)
 router.get('/delete',requireAuth , DeleteAccountData)
 router.get('/logout', logout);
