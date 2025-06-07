@@ -51,7 +51,7 @@ export function setCookiesTokens(res,accessToken,refreshToken){
     const cookieOptions = {
         httpOnly: true,
         secure: COOKIE_SECURE,
-        sameSite: "lax"
+        sameSite: "none"
     };
 
     res.cookie("access_token",accessToken,cookieOptions);
