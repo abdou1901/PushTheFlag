@@ -5,16 +5,16 @@ import {
 import { getUser } from '../../services/store/user.store.mjs';
 
 export async function githubCallback(req, res) {
-   let user = req.user; // set by passport
+   let user = req.user;
    if (!user) {
-      console.error('GitHub callback failed: no user found');
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.redirect('https://v0-aidocsplatform.vercel.app/login?error=unauthorized');
    }
+
    user = await getUser({ username: user.username, githubId: user.id });
+
    const { accessToken, refreshToken } = generateTokens(user);
    setCookiesTokens(res, accessToken, refreshToken);
 
-   // Instead of redirect, send JSON info
-   res.json({ success: true, user, redirectUrl: 'https://v0-aidocsplatform.vercel.app/auth/callback' });
+   // 🔁 Redirect after login success
+   res.redirect('https://v0-aidocsplatform.vercel.app/auth/callback');
 }
-
