@@ -13,8 +13,8 @@ export function requireAuth(req,res,next) {
     const access_Token = req.cookies?.access_token;
 
     function returnToRoot(){
-        res.clearCookie("access_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
-        res.clearCookie("refresh_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
+        res.clearCookie("access_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"none" })
+        res.clearCookie("refresh_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"none" })
         return res.redirect("https://v0-aidocsplatform.vercel.app/login");
     }
 
