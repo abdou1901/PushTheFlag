@@ -7,8 +7,8 @@ import { RefreshTokenExists,RemoveRefreshToken } from "../../utils/tokenStore.mj
 
 const COOKIE_SECURE = NODE_ENV == "production"
 function returnToRoot(res){
-    res.clearCookie("access_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
-    res.clearCookie("refresh_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"lax" })
+    res.clearCookie("access_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"none" })
+    res.clearCookie("refresh_token",{secure:COOKIE_SECURE,httpOnly:true,sameSite:"none" })
     return res.redirect("https://v0-aidocsplatform.vercel.app/");
 }
 export function refreshToken(req,res,next){
