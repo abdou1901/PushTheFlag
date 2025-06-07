@@ -30,7 +30,10 @@ export function requireAuth(req,res,next) {
         return next();
     } catch(err){
         console.log("access token expired with error :",err);
-        if(!err.includes("TokenExpiredError")){
+        if (
+            (typeof err === "string" && !err.includes("TokenExpiredError")) ||
+            (typeof err === "object" && err.name !== "TokenExpiredError")
+        ) {
             return returnToRoot();
         }
         return refreshToken(req,res);
