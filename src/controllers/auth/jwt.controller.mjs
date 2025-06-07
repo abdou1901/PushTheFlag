@@ -35,7 +35,7 @@ export function refreshToken(req,res,next){
             const cookieOptions = {
                 httpOnly: true,
                 secure:COOKIE_SECURE,
-                sameSite:"lax"
+                sameSite:"none"
             }
             res.cookie("access_token",newAccessToken,cookieOptions);
             req.user = {id:payload.id, username:payload.username}
