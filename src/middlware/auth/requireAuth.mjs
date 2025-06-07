@@ -36,8 +36,7 @@ export function requireAuth(req,res,next) {
         ) {
             return returnToRoot();
         }
-        refreshToken(req,res);
-        next();
+        refreshToken(req,res,next);
     }
     
 }
