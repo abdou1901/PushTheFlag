@@ -39,43 +39,51 @@ function isValidLanguage(language){
 }
 
 function processRawResponse(raw) {
-  if (typeof raw !== 'string') {
-    throw new Error('processRawResponse expects a string input.');
-  }
-  let s = raw.trim();
-  if (!s) throw new Error('Empty input to processRawResponse.');
+  // 1. Extract JSON block via matching braces
+  const startIdx = raw.indexOf('{');
+  if (startIdx < 0) throw new Error('No opening brace in response');
 
-  // Extract the JSON substring between the first '{' and the matching '}'
-  const firstBrace = s.indexOf('{');
-  let depth = 0;
-  let endIndex = -1;
-  for (let i = firstBrace; i < s.length; i++) {
-    if (s[i] === '{' && s[i - 1] !== '\\') depth++;
-    if (s[i] === '}' && s[i - 1] !== '\\') {
+  let depth = 0, endIdx = -1;
+  for (let i = startIdx; i < raw.length; i++) {
+    if (raw[i] === '{') depth++;
+    else if (raw[i] === '}') {
       depth--;
-      if (depth === 0) { endIndex = i; break; }
+      if (depth === 0) { endIdx = i; break; }
     }
   }
-  if (firstBrace < 0 || endIndex < 0) {
-    throw new Error('Could not locate a complete JSON object in the input.');
-  }
-  s = s.slice(firstBrace, endIndex + 1);
+  if (endIdx < 0) throw new Error('No matching closing brace in response');
+  let snippet = raw.slice(startIdx, endIdx + 1);
 
-  // Remove JavaScript-style comments
-  s = s.replace(/\/\/[^\n\r]*/g, '')
-       .replace(/\/\*[\s\S]*?\*\//g, '');
+  // 2. Strip non-printable/control chars except whitespace
+  snippet = snippet.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
-  // Parse using JSON5 to handle unquoted keys, single quotes, etc.
-  let parsed;
+  // 3. Remove JS-style comments
+  snippet = snippet
+    .replace(/\/\*[\s\S]*?\*\//g, '')   // block comments
+    .replace(/([^\\:]?)\/\/.*$/gm, '$1');  // line comments
+
+  // 4a. Remove trailing commas: before } or ]
+  snippet = snippet.replace(/,\s*(?=[}\]])/g, '');
+
+  // 4b. Normalize single quotes to double quotes
+  // Only replace quotes around keys/values, not inside strings.
+  snippet = snippet.replace(/(['"])?([A-Za-z0-9_]+)(['"])?:/g, '"$2":');
+
+  // 4c. Escape unescaped backslashes and quotes within strings
+  snippet = snippet.replace(/"((?:[^"\\]|\\.)*)"/g, (_match, inner) => {
+    const escaped = inner
+      .replace(/\\(?!["\\\/bfnrtu])/g, '\\\\')  // extraneous backslashes
+      .replace(/"/g, '\\"');                            // unescaped quotes
+    return `"${escaped}"`;
+  });
+
+  // 5. Parse
   try {
-    parsed = JSON5.parse(s);
+    return JSON5.parse(snippet);
   } catch (err) {
-    console.error('Failed JSON5.parse on cleaned input:', s);
-    throw new Error('processRawResponse: invalid JSON after cleaning. ' + err.message);
+    const preview = snippet.slice(0, 200).replace(/\n/g, '\\n');
+    throw new Error(`JSON.parse failed: ${err.message}. Preview: ${preview}...`);
   }
-
-  // Re-serialize to strict JSON
-  return JSON.stringify(parsed);
 }
 
 export async function generateDocumentationCodeforces({url,code,language,userPrefs = {}}){
@@ -250,14 +258,7 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
 
         // Clean JSON
         const jsonText = rawResponse.trim().replace(/^```json\s*|\s*```$/g, '');
-        const cleanedRes = processRawResponse(jsonText)
-        let parsed;
-        try {
-            parsed = JSON5.parse(cleanedRes);
-        } catch (e) {
-            console.error("Failed to parse JSON:", cleanedRes);
-            throw new Error("AI response is not valid JSON.");
-        }
+        const parsed = processRawResponse(jsonText)
 
         if (parsed.error) return { error: parsed.error };
         if (parsed.clarification) return { needsClarification: true, question: parsed.clarification };
