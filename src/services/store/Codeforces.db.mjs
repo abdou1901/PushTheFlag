@@ -2,6 +2,7 @@ import prisma from '../../config/db.mjs'
 
 
 export async function saveCodeforces({result , userId,language}){
+    console.log(result);
     await prisma.solvedCodeforces.create({
         data:{
             userId:userId,
