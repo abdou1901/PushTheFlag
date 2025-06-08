@@ -39,94 +39,43 @@ function isValidLanguage(language){
 }
 
 function processRawResponse(raw) {
-  if (typeof raw !== "string") {
-    throw new Error("processRawResponse2 expects a string input.");
+  if (typeof raw !== 'string') {
+    throw new Error('processRawResponse expects a string input.');
   }
   let s = raw.trim();
-  if (s.length === 0) {
-    throw new Error("Empty input to processRawResponse2.");
-  }
-  let firstBraceIndex = -1;
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] === "{") {
-      firstBraceIndex = i;
-      break;
-    }
-  }
-  if (firstBraceIndex < 0) {
-    throw new Error("No opening '{' found in input.");
-  }
+  if (!s) throw new Error('Empty input to processRawResponse.');
+
+  // Extract the JSON substring between the first '{' and the matching '}'
+  const firstBrace = s.indexOf('{');
   let depth = 0;
-  let insideString = false;
-  let resultEndIndex = -1;
-  for (let i = firstBraceIndex; i < s.length; i++) {
-    const ch = s[i];
-
-    if (ch === '"' && s[i - 1] !== "\\") {
-      insideString = !insideString;
-      continue;
-    }
-
-    if (!insideString) {
-      if (ch === "{") {
-        depth++;
-      } else if (ch === "}") {
-        depth--;
-        if (depth === 0) {
-          resultEndIndex = i;
-          break;
-        }
-      }
+  let endIndex = -1;
+  for (let i = firstBrace; i < s.length; i++) {
+    if (s[i] === '{' && s[i - 1] !== '\\') depth++;
+    if (s[i] === '}' && s[i - 1] !== '\\') {
+      depth--;
+      if (depth === 0) { endIndex = i; break; }
     }
   }
-
-  if (resultEndIndex < 0) {
-    throw new Error("Could not find matching closing '}' for the first '{'.");
+  if (firstBrace < 0 || endIndex < 0) {
+    throw new Error('Could not locate a complete JSON object in the input.');
   }
-  s = s.substring(firstBraceIndex, resultEndIndex + 1);
-  s = s
-    .replace(/\/\/[^\n\r]*/g, "")  
-    .replace(/\/\*[\s\S]*?\*\//g, "");
-  let out = "";
-  insideString = false;
-  for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
+  s = s.slice(firstBrace, endIndex + 1);
 
-    if (ch === '"' && s[i - 1] !== "\\") {
-      insideString = !insideString;
-      out += ch;
-    } else if ((ch === "\n" || ch === "\r") && insideString) {
-      if (ch === "\r" && s[i + 1] === "\n") {
-        out += "\\n";
-      } else {
-        out += "\\n";
-      }
-    } else {
-      out += ch;
-    }
-  }
-  s = out;
-  s = s.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
-  s = s.replace(
-    /([{,]\s*)([A-Za-z0-9_@$]+)\s*:/g,
-    (match, prefix, key) => {
-      if (/^".*"$/.test(key)) {
-        return `${prefix}${key}:`;
-      }
-      return `${prefix}"${key}":`;
-    }
-  );
+  // Remove JavaScript-style comments
+  s = s.replace(/\/\/[^\n\r]*/g, '')
+       .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  // Parse using JSON5 to handle unquoted keys, single quotes, etc.
+  let parsed;
   try {
-    JSON.parse(s);
+    parsed = JSON5.parse(s);
   } catch (err) {
-    throw new Error(
-      "processRawResponse2: still invalid JSON after cleaning. Result was:\n" +
-        s +
-        "\nJSON.parse error: " +
-        err.message
-    );
+    console.error('Failed JSON5.parse on cleaned input:', s);
+    throw new Error('processRawResponse: invalid JSON after cleaning. ' + err.message);
   }
-  return s;
+
+  // Re-serialize to strict JSON
+  return JSON.stringify(parsed);
 }
 
 export async function generateDocumentationCodeforces({url,code,language,userPrefs = {}}){
@@ -277,12 +226,13 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
         - Make sure the final output passes strict JSON parsing (e.g., 'JSON.parse()' in JavaScript) with no errors.${guidanceText}
 
         Example of a good valid Raw Result : 
-        {
+       {
           "files": {
             "solution.c": "#include <stdio.h>\\n\\nint main(){\\n    int t;\\n    scanf(\"%d\", &t);\\n    while(t--){\\n        int n, k;\\n        scanf(\"%d %d\", &n, &k);\\n\\n        if(n == 2){\\n            printf(\"2 1\\n\");\\n            continue;\\n        }\\n\\n        if(k % 2 == 1){\\n            for(int i = 1; i < n; i++){\\n                printf(\"%d \", n);\\n            }\\n            printf(\"%d\\n\", n - 1);\\n        } else {\\n            for(int i = 1; i <= n - 2; i++){\\n                printf(\"%d \", n - 1);\\n            }\\n            printf(\"%d %d\\n\", n, n - 1);\\n        }\\n    }\\n    return 0;\\n}",
-            "README.md": "# 🌀 Vicious Labyrinth\\n\\n## 🧩 Problem Summary\\nIn a labyrinth with 'n' cells, each person starts at a unique cell 'i', and must use a teleporter 'k' times. Each teleporter must send the person to a different cell (not the same one). The goal is to minimize the total distance from the exit cell 'n' after all 'k' teleportations.\\n\\n## 📥 Input\\n- An integer 't' — number of test cases.\\n- For each test case:\\n  - Two integers 'n' and 'k'.\\n\\n## 📤 Output\\n- For each test case, output a list of integers 'a1, a2, ..., an' such that 'ai != i'.\\n- After using teleporters exactly 'k' times, each person should be as close as possible to the exit at cell 'n'.\\n\\n## 🧠 Approach\\nWe aim to strategically build the teleporter destination array 'a[]' such that:\\n- No teleport leads to the same cell (i ≠ a[i]).\\n- The positions after 'k' applications of 'a[i]' minimize the distance from the exit.\\n\\nWe take advantage of **cycle behavior**:\\n- Teleporters form cycles.\\n- A person at index 'i' will move to a[i], then a[a[i]], and so on — 'k' times.\\n- Cycles of length 2 are ideal (swap pairs):\\n  - For odd 'k', you end on the other node.\\n  - For even 'k', you return to the starting node.\\n\\n### Case Handling:\\n- If 'n == 2': Only valid config is '2 1'.\\n- If 'k' is odd:\\n  - All values map to 'n', except the last one to 'n-1'.\\n- If 'k' is even:\\n  - All map to 'n-1', except last two mapping to 'n' and 'n-1'.\\n\\n## ⏱️ Time & Space Complexity\\n- **Time per test case:** O(n)\\n- **Total Time:** O(t × n), guaranteed within 2e5\\n- **Space:** O(1), direct print without storage\\n\\n## 🧪 Sample Test Cases\\n### Case 1:\\n**Input:**\\n'''\\n2\\n2 1\\n3 2\\n'''\\n**Output:**\\n'''\\n2 1\\n2 3 2\\n'''\\n\\n### Case 2:\\n**Input:**\\n'''\\n1\\n4 3\\n'''\\n**Output:**\\n'''\\n4 4 4 3\\n'''\\n\\n## 🔍 Notes\\n- The solution leverages teleportation cycles to control final positions.\\n- This is a combinatorial problem disguised as a distance minimization task.\\n- Multiple valid answers exist; only constraints must be respected.\\n\\n## 🛠️ Tips\\n- Ensure 'a[i] != i' strictly.\\n- Watch out for the behavior of even vs odd 'k' with cycles.\\n- Test edge cases: small 'n', large 'k', and 'n == 2'."
+            "README.md": "## Problem Summary\\nIn a labyrinth of n cells numbered from 1 to n, each person starts at their own cell i and uses a teleporter exactly k times. Each teleport must send the person to a different cell (a[i] != i). The goal is to minimize the total distance from the exit at cell n after k uses.\\n\\n## Input\\n- Integer t: number of test cases.\\n- For each test case:\\n  - Two integers n (number of cells) and k (number of teleports).\\n\\n## Output\\n- For each test case, output a sequence a1, a2, …, an where ai != i, representing the teleporter mapping. After applying the mapping k times, each person should end as close as possible to cell n.\\n\\n## Approach\\n1. Observe that teleportation defines cycles on the set of cells.\\n2. For k uses, cycles of length 2 are ideal because they ensure maximal movement toward the exit when k is odd, and minimal distance when k is even.\\n3. Handle special case n == 2 directly: the only valid mapping is [2, 1].\\n4. If k is odd, map every cell to n except the last one to n–1.\\n5. If k is even, map every cell to n–1 except the last two to n and n–1 respectively.\\n\\n## Complexity Analysis\\n- Time per test case: O(n) — we construct and print the mapping in linear time.\\n- Total time: O(t × n), which is efficient for up to n = 2×10^5.\\n- Space: O(1) additional space beyond the output itself.\\n\\n## Sample Test Cases\\n**Case 1**\\nInput:\\n```\n2\n2 1\n3 2\n```\\nOutput:\\n```\n2 1\n2 3 2\n```\\n**Case 2**\\nInput:\\n```\n1\n4 3\n```\\nOutput:\\n```\n4 4 4 3\n```\\n\\n## Additional Notes\\n- Multiple valid mappings may exist; any mapping satisfying ai != i and minimizing distance after k uses is acceptable.\\n- Be careful with the parity of k and the special case n = 2.\\n- Always verify edge cases, including the smallest and largest possible values of n and k.\\n"
           }
         }
+
         `.trim();
 
         console.log("Next step calling the ai model")
