@@ -275,6 +275,14 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
         - You must NEVER include markdown formatting (' \`\`\` ' or similar). This breaks JSON validity.
         - Check for the structure definition in the problme itself , it is not always required to be mentioned by the user.
         - Make sure the final output passes strict JSON parsing (e.g., 'JSON.parse()' in JavaScript) with no errors.${guidanceText}
+
+        Example of a good valid Raw Result : 
+        {
+          "files": {
+            "solution.c": "#include <stdio.h>\\n\\nint main(){\\n    int t;\\n    scanf(\"%d\", &t);\\n    while(t--){\\n        int n, x;\\n        scanf(\"%d %d\", &n, &x);\\n        int sum = 0, num;\\n        for(int i = 0; i < n; i++){\\n            scanf(\"%d\", &num);\\n            sum += num;\\n        }\\n        if(sum == n * x)\\n            printf(\"YES\\n\");\\n        else\\n            printf(\"NO\\n\");\\n    }\\n    return 0;\\n}",
+            "README.md": "# 🌊 Shore Cleanup Verification\\n\\n## 🧩 Problem Summary\\nYou're given 'n' cells representing sections of a shore, each containing some amount of litter. You are told the target amount 'x' that each cell should ideally contain.\\n\\nYour task is to check — for each test case — whether the **total amount of litter** matches the expected value 'n * x'.\\n\\n## 📥 Input\\n- An integer 't' — number of test cases.\\n- For each test case:\\n  - Two integers 'n' and 'x'.\\n  - A line of 'n' integers representing the litter in each cell.\\n\\n## 📤 Output\\nPrint 'YES' if the total litter equals 'n * x', otherwise print 'NO'.\\n\\n## 💡 Approach\\n- For each test case, compute the sum of all litter amounts.\\n- Compare the sum with 'n * x'.\\n- Output the result accordingly.\\n\\n## 🧠 Time & Space Complexity\\n- **Time:** O(n) per test case — must read and sum 'n' integers.\\n- **Space:** O(1) — uses constant space.\\n\\n## 🧪 Test Cases\\n**Case 1:**\\nInput: '1\\n4 2\\n2 2 2 2'\\nOutput: 'YES'\\n\\n**Case 2:**\\nInput: '1\\n3 3\\n2 3 4'\\nOutput: 'NO'\\n\\n**Case 3:**\\nInput: '1\\n1 5\\n5'\\nOutput: 'YES'\\n\\n## 📝 Notes\\n- Be cautious about integer overflows with large 'n' and 'x'.\\n- Avoid assuming that values will always balance unless checked.\\n- The approach is simple but reliable."
+          }
+        }
         `.trim();
 
         console.log("Next step calling the ai model")
