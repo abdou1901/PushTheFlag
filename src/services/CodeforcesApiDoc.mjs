@@ -115,8 +115,8 @@ export async function generateDocumentationCodeforces({ url, code, language, use
             'Write explanations as if speaking to a fellow developer—friendly and conversational.'
     );
 
-   const guidanceText = extraInstructions.length ? '\n\nAdditional context based on problem metadata and user preferences :\n'+
-          extraInstructions.map(instr => `- ${instr}`).join('\n') : '';
+   const guidanceText = extra.length ? '\n\nAdditional context based on problem metadata and user preferences :\n'+
+          extra.map(instr => `- ${instr}`).join('\n') : '';
 
     // prompt for AI: only readme
     const prompt = `A user solved Codeforces problem "${meta.name}" (rating: ${meta.rating}).\n` +
