@@ -47,7 +47,7 @@ model SolvedCodeforces {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId      Int
   contest_id  Int
-  index       String   @db.Char(1)
+  index       String 
   title       String
   difficulty  Int
   language    String?
