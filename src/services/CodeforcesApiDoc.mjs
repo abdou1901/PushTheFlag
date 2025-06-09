@@ -15,10 +15,13 @@ function isValidUrl(rawUrl) {
   try {
     const url = new URL(rawUrl);
     if (!url.hostname.endsWith("codeforces.com")) return false;
-    let match = url.pathname.match(/^\/problemset\/problem\/(\d+)\/([A-Z])\/?$/);
+
+    let match = url.pathname.match(/^\/problemset\/problem\/(\d+)\/([A-Z][0-9A-Z]*)\/?$/);
     if (match) return { contestId: match[1], problemIndex: match[2] };
-    match = url.pathname.match(/^\/contest\/(\d+)\/problem\/([A-Z])\/?$/);
+
+    match = url.pathname.match(/^\/contest\/(\d+)\/problem\/([A-Z][0-9A-Z]*)\/?$/);
     if (match) return { contestId: match[1], problemIndex: match[2] };
+
     return false;
   } catch {
     return false;
