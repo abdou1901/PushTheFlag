@@ -86,7 +86,7 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     const doc = {
       files: {
         [solutionKey]: code.trim(),
-        'README.md': readme.trim().replace(/\r?\n/g, '\\n')
+        'README.md': readme.trim()
       }
     };
 
