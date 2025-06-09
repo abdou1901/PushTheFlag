@@ -32,20 +32,17 @@ function isValidLanguage(language) {
 }
 
 /**
- * Cleans the raw AI response by extracting the first JSON object
+ * Cleans the raw AI response by extracting the JSON object
  * and stripping markdown fences or wrapper text.
  */
 function processRawResponse(raw) {
-  // Remove markdown fences
   const noFences = raw.replace(/^```(?:json)?|```$/g, '').trim();
-  // Extract JSON block
   const match = noFences.match(/\{[\s\S]*\}$/);
   return match ? match[0] : noFences;
 }
 
 export async function generateDocumentationCodeforces({ url, code, language, userPrefs = {} }) {
   try {
-    // Validate inputs
     url = sanitizePromptInput(url).trim();
     const id = isValidUrl(url);
     if (!id) throw new Error("Please enter a valid Codeforces URL (e.g. https://codeforces.com/problemset/problem/2114/F)");
@@ -56,10 +53,8 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     code = sanitizePromptInput(code);
     if (!isValidCode(code)) throw new Error("Maximum code length is 50000 characters");
 
-    // Fetch problem metadata
     const meta = await getCodeforecesMetadata(id.contestId, id.problemIndex);
 
-    // Build extra instructions based on rating and user tone
     const extra = [];
     if (meta.rating >= 1800) extra.push('Explain technical details and tricky parts deeply.');
     else if (meta.rating >= 1100) extra.push('Provide balanced explanations with key insights.');
@@ -69,27 +64,25 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     if (userPrefs.tone === 'advanced') extra.push('Include deeper insights and trade-offs.');
     if (userPrefs.tone === 'dev') extra.push('Be concise and code-focused, include relevant snippets.');
 
-    // Compose prompt for AI
     const prompt = `A user has solved Codeforces problem "${meta.name}" (rating: ${meta.rating}).\n` +
-      `URL: ${url}\n\n` +
-      `Language: ${language}\n\n` +
-      `User's submitted solution:\n[[[BEGIN CODE BLOCK]]]\n\\`\`\`\n${code}\n\\`\`\`\n[[[END CODE BLOCK]]]\n\n` +
-      extra.map(x => `- ${x}`).join("\n") +
-      `\n\nIMPORTANT: Return only a single JSON object with the following structure:\n` +
-      `{\n` +
-      `  "files": {\n` +
-      `    "solution.${language}": "<exact code>",\n` +
-      `    "README.md": "<GitHub-style Markdown as single-line string with \n for newlines>"\n` +
-      `  }\n` +
-      `}\n\n` +
-      `Rules:\n` +
-      `- No additional keys or wrappers.\n` +
-      `- Escape all double quotes as \" and encode newlines as \n.\n` +
-      `- Do NOT include wrapper text or markdown fences.\n` +
-      `- "solution.${language}" must exactly match the submitted code.\n` +
-      `- README.md must include summary, approach, complexity, test cases, and insights with proper headings and bullets.`;
+                   `URL: ${url}\n\n` +
+                   `Language: ${language}\n\n` +
+                   `User's submitted solution:\n[[[BEGIN CODE BLOCK]]]\n\`\`\`\n${code}\n\`\`\`\n[[[END CODE BLOCK]]]\n\n` +
+                   extra.map(x => `- ${x}`).join("\n") +
+                   `\n\nIMPORTANT: Return only a single JSON object with the following structure:\n` +
+                   `{\n` +
+                   `  \"files\": {\n` +
+                   `    \"solution.${language}\": \"<exact code>\",\n` +
+                   `    \"README.md\": \"<GitHub-style Markdown as single-line string with \\n for newlines>\"\n` +
+                   `  }\n` +
+                   `}\n\n` +
+                   `Rules:\n` +
+                   `- No additional keys or wrappers.\n` +
+                   `- Escape all double quotes as \\\" and encode newlines as \\\n.\n` +
+                   `- Do NOT include wrapper text or markdown fences.\n` +
+                   `- \"solution.${language}\" must exactly match the submitted code.\n` +
+                   `- README.md must include summary, approach, complexity, test cases, and insights with proper headings and bullets.`;
 
-    // Call OpenAI
     const completion = await openai.chat.completions.create({
       model: OPENROUTE_MODEL,
       messages: [
@@ -101,7 +94,6 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     const aiRaw = completion.choices[0].message.content;
     if (!aiRaw) throw new Error('AI did not return any response');
 
-    // Clean and parse AI response
     const cleaned = processRawResponse(aiRaw.trim());
     let parsed;
     try {
@@ -111,7 +103,6 @@ export async function generateDocumentationCodeforces({ url, code, language, use
       throw new Error('AI response is not valid JSON.');
     }
 
-    // Trim solution code
     const solKey = Object.keys(parsed.files)[0];
     parsed.files[solKey] = parsed.files[solKey].trim();
 
