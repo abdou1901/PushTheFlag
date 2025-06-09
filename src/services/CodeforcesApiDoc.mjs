@@ -31,6 +31,18 @@ function isValidLanguage(language) {
   return valid.includes(language.toLowerCase());
 }
 
+/**
+ * Cleans the raw AI response by extracting the first JSON object
+ * and stripping markdown fences or wrapper text.
+ */
+function processRawResponse(raw) {
+  // Remove markdown fences
+  const noFences = raw.replace(/^```(?:json)?|```$/g, '').trim();
+  // Extract JSON block
+  const match = noFences.match(/\{[\s\S]*\}$/);
+  return match ? match[0] : noFences;
+}
+
 export async function generateDocumentationCodeforces({ url, code, language, userPrefs = {} }) {
   try {
     // Validate inputs
@@ -57,36 +69,25 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     if (userPrefs.tone === 'advanced') extra.push('Include deeper insights and trade-offs.');
     if (userPrefs.tone === 'dev') extra.push('Be concise and code-focused, include relevant snippets.');
 
-    // Compose prompt
-    const prompt = `A user has solved Codeforces problem "${meta.name}" (rating: ${meta.rating}).
-URL: ${url}
-
-Language: ${language}
-
-User's submitted solution:
-[[[BEGIN CODE BLOCK]]]
-\`\`\`
-${code}
-\`\`\`
-[[[END CODE BLOCK]]]
-
-${extra.map(x => `- ${x}`).join("\n")}
-
-IMPORTANT: Return only a single JSON object with the following structure:
-{
-  "files": {
-    "solution.${language}": "<exact multi-line code>",
-    "README.md": "<GitHub-style Markdown as a single-line string with \n for newlines>"
-  }
-}
-
-Rules:
-- No additional keys or wrappers.
-- Escape all double quotes as \" and encode actual newlines as \n.
-- Do NOT include any wrapper text or markdown fences.
-- The value for "solution.${language}" must match exactly the submitted code.
-- The README.md must include problem summary, approach, complexity, test cases, and insights, well-structured with markdown headings and bullets.
-`;
+    // Compose prompt for AI
+    const prompt = `A user has solved Codeforces problem "${meta.name}" (rating: ${meta.rating}).\n` +
+      `URL: ${url}\n\n` +
+      `Language: ${language}\n\n` +
+      `User's submitted solution:\n[[[BEGIN CODE BLOCK]]]\n\\`\`\`\n${code}\n\\`\`\`\n[[[END CODE BLOCK]]]\n\n` +
+      extra.map(x => `- ${x}`).join("\n") +
+      `\n\nIMPORTANT: Return only a single JSON object with the following structure:\n` +
+      `{\n` +
+      `  "files": {\n` +
+      `    "solution.${language}": "<exact code>",\n` +
+      `    "README.md": "<GitHub-style Markdown as single-line string with \n for newlines>"\n` +
+      `  }\n` +
+      `}\n\n` +
+      `Rules:\n` +
+      `- No additional keys or wrappers.\n` +
+      `- Escape all double quotes as \" and encode newlines as \n.\n` +
+      `- Do NOT include wrapper text or markdown fences.\n` +
+      `- "solution.${language}" must exactly match the submitted code.\n` +
+      `- README.md must include summary, approach, complexity, test cases, and insights with proper headings and bullets.`;
 
     // Call OpenAI
     const completion = await openai.chat.completions.create({
@@ -97,16 +98,22 @@ Rules:
       ]
     });
 
-    const raw = completion.choices[0].message.content.trim();
-    // Strip code fences if present
-    const jsonText = raw.replace(/^```(?:json)?|```$/g, '').trim();
+    const aiRaw = completion.choices[0].message.content;
+    if (!aiRaw) throw new Error('AI did not return any response');
 
-    // Parse JSON5 for leniency
-    const parsed = JSON5.parse(jsonText);
+    // Clean and parse AI response
+    const cleaned = processRawResponse(aiRaw.trim());
+    let parsed;
+    try {
+      parsed = JSON5.parse(cleaned);
+    } catch (e) {
+      console.error('Failed to parse JSON:', cleaned);
+      throw new Error('AI response is not valid JSON.');
+    }
 
     // Trim solution code
-    const key = Object.keys(parsed.files)[0];
-    parsed.files[key] = parsed.files[key].trim();
+    const solKey = Object.keys(parsed.files)[0];
+    parsed.files[solKey] = parsed.files[solKey].trim();
 
     return { needsClarification: false, doc: parsed, meta, path: `codeforces/CF-${meta.contestId}-${slugify(meta.name)}` };
   } catch (err) {
