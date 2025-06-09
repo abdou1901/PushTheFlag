@@ -39,51 +39,6 @@ function isValidLanguage(language){
 }
 
 function processRawResponse(raw) {
-  // 1. Extract JSON block via matching braces
-  const startIdx = raw.indexOf('{');
-  if (startIdx < 0) throw new Error('No opening brace in response');
-
-  let depth = 0, endIdx = -1;
-  for (let i = startIdx; i < raw.length; i++) {
-    if (raw[i] === '{') depth++;
-    else if (raw[i] === '}') {
-      depth--;
-      if (depth === 0) { endIdx = i; break; }
-    }
-  }
-  if (endIdx < 0) throw new Error('No matching closing brace in response');
-  let snippet = raw.slice(startIdx, endIdx + 1);
-
-  // 2. Strip non-printable/control chars except whitespace
-  snippet = snippet.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-
-  // 3. Remove JS-style comments
-  snippet = snippet
-    .replace(/\/\*[\s\S]*?\*\//g, '')   // block comments
-    .replace(/([^\\:]?)\/\/.*$/gm, '$1');  // line comments
-
-  // 4a. Remove trailing commas: before } or ]
-  snippet = snippet.replace(/,\s*(?=[}\]])/g, '');
-
-  // 4b. Normalize single quotes to double quotes
-  // Only replace quotes around keys/values, not inside strings.
-  snippet = snippet.replace(/(['"])?([A-Za-z0-9_]+)(['"])?:/g, '"$2":');
-
-  // 4c. Escape unescaped backslashes and quotes within strings
-  snippet = snippet.replace(/"((?:[^"\\]|\\.)*)"/g, (_match, inner) => {
-    const escaped = inner
-      .replace(/\\(?!["\\\/bfnrtu])/g, '\\\\')  // extraneous backslashes
-      .replace(/"/g, '\\"');                            // unescaped quotes
-    return `"${escaped}"`;
-  });
-
-  // 5. Parse
-  try {
-    return JSON5.parse(snippet);
-  } catch (err) {
-    const preview = snippet.slice(0, 200).replace(/\n/g, '\\n');
-    throw new Error(`JSON.parse failed: ${err.message}. Preview: ${preview}...`);
-  }
 }
 
 export async function generateDocumentationCodeforces({url,code,language,userPrefs = {}}){
@@ -194,8 +149,8 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
         const guidanceText = extraInstructions.length ? '\n\nAdditional context based on problem metadata and user preferences :\n'+
             extraInstructions.map(instr => `- ${instr}`).join('\n') : '';
         
-        const prompt = `
-       A user has just solved a Codeforces problem at this URL: ${url}
+         const prompt = `
+        A user has just solved a Codeforces problem at this URL: ${url}
         Their submitted solution in ${language} is:
         [[[BEGIN CODE BLOCK]]]
         \`\`\`
@@ -232,15 +187,17 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
         - You must NEVER include markdown formatting (' \`\`\` ' or similar). This breaks JSON validity.
         - Check for the structure definition in the problme itself , it is not always required to be mentioned by the user.
         - Make sure the final output passes strict JSON parsing (e.g., 'JSON.parse()' in JavaScript) with no errors.${guidanceText}
-
-        Example of a good valid Raw Result : 
+        
+        Here is an example of a valid good raw response: \`\`\`json
         {
           "files": {
-            "solution.c": "#include <stdio.h>\\n#include <stdbool.h>\\n#include <string.h>\\n\\nint main() {\\n    int t;\\n    scanf(\"%d\", &t);\\n    while (t--) {\\n        int n;\\n        scanf(\"%d\", &n);\\n        char str[200001];\\n        scanf(\"%s\", str);\\n\\n        if (n == 2) {\\n            printf(\"2\\\\n\");\\n            continue;\\n        }\\n\\n        int prefix[n], suffix[n];\\n        bool seen[256] = {false};\\n\\n        // Compute prefix distinct counts\\n        int count = 0;\\n        for (int i = 0; i < n; i++) {\\n            if (!seen[(unsigned char)str[i]]) {\\n                seen[(unsigned char)str[i]] = true;\\n                count++;\\n            }\\n            prefix[i] = count;\\n        }\\n\\n        // Compute suffix distinct counts\\n        memset(seen, false, sizeof(seen));\\n        count = 0;\\n        for (int i = n - 1; i >= 0; i--) {\\n            if (!seen[(unsigned char)str[i]]) {\\n                seen[(unsigned char)str[i]] = true;\\n                count++;\\n            }\\n            suffix[i] = count;\\n        }\\n\\n        // Find max partition sum\\n        int max_count = 0;\\n        for (int i = 0; i < n - 1; i++) {\\n            int sum = prefix[i] + suffix[i + 1];\\n            if (sum > max_count) {\\n                max_count = sum;\\n            }\\n        }\\n\\n        printf(\"%d\\\\n\", max_count);\\n    }\\n    return 0;\\n}",
-            "README.md": "## Problem Summary\\nThe problem is about finding the maximum number of distinct characters in any contiguous substring of a given string after partitioning.\\nThe solution requires computing the distinct character counts in prefixes and suffixes of the string and then finding the maximum sum of these counts over all possible partitions.\\n\\n## Input\\n- Integer t: number of test cases.\\n- For each test case: \\n  - Integer n: length of the string.\\n  - String of length n.\\n\\n## Output\\n- For each test case, print the maximum number of distinct characters in any contiguous substring.\\n\\n## Approach\\n1. For each test case:\\n   - Read the string and its length.\\n2. Handle the special case where n = 2 directly by printing 2.\\n3. Compute the prefix distinct character counts by iterating from the start of the string.\\n4. Compute the suffix distinct character counts by iterating from the end of the string.\\n5. Find the maximum sum of prefix and suffix counts over all possible partitions.\\n\\n## Complexity Analysis\\n- **Time Complexity**: O(t × n), where t is the number of test cases and n is the length of the string. The solution iterates through the string multiple times to compute prefix and suffix counts.\\n- **Space Complexity**: O(n), for storing the prefix and suffix counts. Additionally, the seen array uses O(1) space since it's fixed size 256.\\n\\n## Sample Test Cases\\n**Case 1**\\nInput:\\n'''\n3\n2\nab\n7\naaaab\n3\n'''\nOutput:\\n'''\n2\n3\n2\n'''\n**Case 2**\\nInput:\\n'''\n1\n10\nabcdeijfe\n'''\nOutput:\\n'''\n6\n'''\n\\n## Additional Notes\\n- The approach leverages the observation that the maximum number of distinct characters in any substring can be found by considering the sums of prefix and suffix counts.\\n- The special case for n = 2 ensures that the base condition is handled correctly.\\n- The use of a boolean array for tracking seen characters ensures efficient computation of distinct character counts."
+            "solution.c": "int reverse(int x){\\n    if(!x ||x >2147483647 || x <=-2147483648) return 0;\\n    bool positive = true;\\n    if(x < 0){\\n        x= -x;\\n        positive = false;\\n    }\\n    long int result = 0;\\n    for(int i  = x ; i >0 ; i/=10){\\n        result = result*10 + i % 10;\\n        if(result >2147483647 || result <-2147483648) return 0;\\n    }\\n    return positive? result : -result;\\n}",
+            "README.md": "## Problem Summary\\nThe \"Reverse Integer\" problem on LeetCode challenges us to reverse the digits of a given 32-bit signed integer. We must handle overflow conditions to ensure the reversed integer remains within the 32-bit signed integer range. \\n\\n## Input/Output Description\\n- **Input**: The function takes a 32-bit signed integer as input.\\n- **Output**: The function returns an integer that is the reversal of the input digits, or 0 if the reversal overflows.\\n\\n## Approach \\nThe solution involves the following steps:\\n1. Check for overflow at the start: If the input is already out of bounds, return 0.\\n2. Determine if the input is positive or negative.\\n3. Reverse the digits of the number.\\n4. Check for overflow after each digit reversal.\\n5. Return the result with the correct sign.\\n\\n## Code Walkthrough \\nHere's the submitted solution explained:\\n\`\`\`c\\nint reverse(int x){\\n    if(!x || x > 2147483647 || x <= -2147483648) return 0;\\n    bool positive = true;\\n    if(x < 0){\\n        x = -x;\\n        positive = false;\\n    }\\n    long int result = 0;\\n    for(int i = x; i > 0; i /= 10){\\n        result = result * 10 + i % 10;\\n        if(result > 2147483647 || result < -2147483648) return 0;\\n    }\\n    return positive ? result : -result;\\n}\\n\`\`\`\\n### Key Points\\n- **Initial Check**: The check 'if(!x || x > 2147483647 || x <= -2147483648)' handles cases where the input is already out of bounds.\\n- **Sign Handling**: If the number is negative, we convert it to positive and keep track of the sign for later.\\n- **Reversal Logic**: We use a loop to reverse the digits by repeatedly extracting the last digit and appending it to the result.\\n- **Overflow Check**: After each digit reversal, we check if the result is within the 32-bit signed integer range.\\n\\n## Complexity Analysis \\n- **Time Complexity**: O(log x). Each digit of the input number is processed exactly once.\\n- **Space Complexity**: O(1). We use only a few extra variables.\\n\\n## Test Cases\\nLet's test our function with a few examples:\\n1. **Case 1**: Input = 123\\n   - Expected Output: 321\\n   - Explanation: Reversing the digits of 123 gives 321.\\n2. **Case 2**: Input = -123\\n   - Expected Output: -321\\n   - Explanation: Reversing the digits and maintaining the sign gives -321.\\n3. **Case 3**: Input = 120\\n   - Expected Output: 21\\n   - Explanation: Trailing zeros are removed in the reversed number.\\n4. **Case 4**: Input = 0\\n   - Expected Output: 0\\n   - Explanation: Reversing 0 gives 0.\\n5. **Edge Case**: Input = 1534236469\\n   - Expected Output: 0\\n   - Explanation: Reversing this number results in overflow.\\n\\n## Extra Insights\\n- **Robust Overflow Handling**: The solution correctly handles overflow at every step, avoiding potential bugs.\\n- **Edge Cases**: Remember to test edge cases like the smallest and largest 32-bit integers and zero.\\n"
           }
         }
-
+        \`\`\`
+       
+        \`\`\`
         `.trim();
 
         console.log("Next step calling the ai model")
@@ -258,7 +215,14 @@ export async function generateDocumentationCodeforces({url,code,language,userPre
 
         // Clean JSON
         const jsonText = rawResponse.trim().replace(/^```json\s*|\s*```$/g, '');
-        const parsed = processRawResponse(jsonText)
+        const cleanedres = processRawResponse(jsonText)
+        let parsed;
+        try {
+            parsed = JSON5.parse(cleanedres);
+        } catch (e) {
+            console.error("Failed to parse JSON:", cleanedres);
+            throw new Error("AI response is not valid JSON.");
+        }
 
         if (parsed.error) return { error: parsed.error };
         if (parsed.clarification) return { needsClarification: true, question: parsed.clarification };
