@@ -144,7 +144,7 @@ export async function generateDocumentationLeetcode({url,code,language,userPrefs
             extraInstructions.map(instr => `- ${instr}`).join('\n') : '';
         
         
-        const prompt = `A user solved Leetcode problem "${meta.name}" (rating: ${meta.rating}).\n` +
+        const prompt = `A user solved Leetcode problem "${title}" (difficulty: ${difficulty}).\n` +
                    `URL: ${url}\n\n` +
                    `Language: ${language}\n\n` +
                    `Here is their submitted solution:\n[[[BEGIN CODE]]]\n\`\`\`\n${code}\n\`\`\`\n[[[END CODE]]]\n\n` +
