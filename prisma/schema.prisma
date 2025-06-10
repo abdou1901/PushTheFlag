@@ -15,9 +15,9 @@ model User {
   github_username   String
   email             String?  
   pat               String?          
-  leetcode_repo     String             @default("leetcode/")
-  codeforces_repo   String             @default("codeforces/")
-  ctf_repo          String             @default("ctf_writeups/")
+  leetcode_repo     String             @default("leetcode")
+  codeforces_repo   String             @default("codeforces")
+  ctf_repo          String             @default("ctf_writeups")
   branch_name       String             @default("main")
   role              Role               @default(FREE)
   created_at        DateTime           @default(now())
