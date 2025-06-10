@@ -151,7 +151,25 @@ export async function generateDocumentationCodeforces({ url, code, language, use
     if (!readme) throw new Error('AI did not return README content.');
 
     // construct files object
-    const solutionKey = `solution.${language}`;
+    const languageToExtension = {
+        "python": "py",
+        "python3": "py",
+        "c": "c",
+        "c#": "cs",
+        "c++": "cpp",
+        "java": "java",
+        "javascript": "js",
+        "typescript": "ts",
+        "php": "php",
+        "swift": "swift",
+        "go": "go",
+        "ruby": "rb",
+        "rust": "rs",
+        "kotlin": "kt",
+        "dart": "dart"
+    };
+    const extension = languageToExtension[language];
+    const solutionKey = `solution.${enxtension}`;
     const doc = {
       files: {
         [solutionKey]: code.trim(),
