@@ -190,7 +190,7 @@ export async function generateDocumentationLeetcode({url,code,language,userPrefs
             "dart": "dart"
         };
         const extension = languageToExtension[language];
-        const solutionKey = `solution.${enxtension}`;
+        const solutionKey = `solution.${extension}`;
         const doc = {
           files: {
             [solutionKey]: code.trim(),
