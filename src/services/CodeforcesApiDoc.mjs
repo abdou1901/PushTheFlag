@@ -169,7 +169,7 @@ export async function generateDocumentationCodeforces({ url, code, language, use
         "dart": "dart"
     };
     const extension = languageToExtension[language];
-    const solutionKey = `solution.${enxtension}`;
+    const solutionKey = `solution.${extension}`;
     const doc = {
       files: {
         [solutionKey]: code.trim(),
